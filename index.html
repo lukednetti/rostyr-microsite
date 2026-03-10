@@ -1,0 +1,1674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Operation Payroll</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rethink+Sans:wght@400..800&display=swap" rel="stylesheet">
+
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
+
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --mid-green:      #095D51;
+      --electric-green: #6DFF4D;
+      --white:          #FFFFFF;
+      --black:          #000000;
+      --gray-green:     #F2F7F4;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: #111;
+      overflow: hidden;
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* ── 1920×1080 fixed canvas — JS handles centering + scaling ── */
+    #app {
+      position: absolute;
+      width: 1920px;
+      height: 1080px;
+      transform-origin: top left;
+      perspective: 1800px;
+      /* top / left / transform set by scaleApp() */
+    }
+
+    /* ── Slide base + transitions ── */
+    .slide {
+      position: absolute;
+      inset: 0;
+      width: 1920px;
+      height: 1080px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      /* Default: waiting off-screen right */
+      transform: translateX(100%) scale(0.95);
+      opacity: 0;
+      visibility: hidden;
+      will-change: transform, opacity;
+      transition:
+        transform  0.65s cubic-bezier(0.16, 1, 0.3, 1),
+        opacity    0.65s cubic-bezier(0.16, 1, 0.3, 1),
+        visibility 0s   linear 0.65s;
+    }
+
+    .slide.active {
+      transform: translateX(0) scale(1) rotateY(0deg);
+      opacity: 1;
+      visibility: visible;
+      transition:
+        transform  0.65s cubic-bezier(0.16, 1, 0.3, 1),
+        opacity    0.35s cubic-bezier(0.16, 1, 0.3, 1) 0.15s,
+        visibility 0s   linear 0s;
+    }
+
+    .slide.exited {
+      /* Falls back at an angle — the "card tipping away" effect */
+      transform: translateX(-30%) scale(0.85) rotateY(5deg);
+      opacity: 0;
+      visibility: hidden;
+      transition:
+        transform  0.5s  cubic-bezier(0.4, 0, 1, 1),
+        opacity    0.25s cubic-bezier(0.4, 0, 1, 1),
+        visibility 0s    linear 0.5s;
+    }
+
+    /* Disable transition on first paint so slides don't animate in */
+    .no-transition .slide {
+      transition: none !important;
+    }
+
+    /* ── Shared: Logo ── */
+    .logo {
+      position: absolute;
+      top: 36px;
+      right: 44px;
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+    }
+
+    /* ── Shared: Back Button ── */
+    .back-btn {
+      position: absolute;
+      top: 36px;
+      left: 44px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px 32px;
+      border: 2px solid rgba(0, 0, 0, 0.28);
+      border-radius: 100px;
+      background: transparent;
+      font-family: 'Inter', sans-serif;
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--black);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    .back-btn:hover  { background: rgba(0, 0, 0, 0.05); }
+    .back-btn:active { background: rgba(0, 0, 0, 0.10); }
+    .back-btn i {
+      font-size: 22px;
+      line-height: 1;
+    }
+
+
+    /* ══════════════════════════════════════════════════════════
+       SLIDE 1 — Title / Splash
+    ══════════════════════════════════════════════════════════ */
+    #slide-1 {
+      background: var(--mid-green);
+      gap: 0;
+    }
+
+    #slide-1 .headline {
+      text-align: center;
+      line-height: 0.95;
+    }
+    #slide-1 .headline .line1 {
+      display: block;
+      font-family: 'Rethink Sans', sans-serif;
+      font-size: 120px;
+      font-weight: 600;
+      color: var(--white);
+      text-transform: uppercase;
+      letter-spacing: -2px;
+    }
+    #slide-1 .headline .line2 {
+      display: block;
+      font-family: 'Rethink Sans', sans-serif;
+      font-size: 136px;
+      font-weight: 600;
+      color: var(--electric-green);
+      text-transform: uppercase;
+      letter-spacing: -2px;
+    }
+
+    #slide-1 .subtitle {
+      font-family: 'Inter', sans-serif;
+      font-size: 32px;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.82);
+      text-align: center;
+      margin-top: 28px;
+    }
+
+    #slide-1 .btn-play {
+      margin-top: 48px;
+      padding: 22px 72px;
+      background: var(--electric-green);
+      color: var(--mid-green);
+      font-family: 'Inter', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      border: none;
+      border-radius: 100px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      transition: transform 0.1s, opacity 0.15s;
+    }
+    #slide-1 .btn-play:active { transform: scale(0.97); opacity: 0.88; }
+
+
+    /* ══════════════════════════════════════════════════════════
+       SLIDE 2 — Cash Gap Question
+    ══════════════════════════════════════════════════════════ */
+    #slide-2 {
+      background: var(--white);
+      gap: 0;
+    }
+
+    #slide-2 .heading {
+      font-family: 'Rethink Sans', sans-serif;
+      font-size: 116px;
+      font-weight: 600;
+      color: var(--black);
+      text-align: center;
+      line-height: 1.1;
+    }
+    #slide-2 .heading .accent { color: var(--mid-green); }
+
+    #slide-2 .btn-row {
+      display: flex;
+      gap: 40px;
+      margin-top: 72px;
+    }
+
+    #slide-2 .btn-solid {
+      width: 380px;
+      padding: 26px 0;
+      background: var(--mid-green);
+      color: var(--white);
+      font-family: 'Inter', sans-serif;
+      font-size: 24px;
+      font-weight: 600;
+      border: none;
+      border-radius: 100px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      transition: opacity 0.15s;
+    }
+    #slide-2 .btn-solid:active { opacity: 0.82; }
+
+    #slide-2 .btn-outline {
+      width: 380px;
+      padding: 26px 0;
+      background: transparent;
+      color: var(--mid-green);
+      font-family: 'Inter', sans-serif;
+      font-size: 24px;
+      font-weight: 600;
+      border: 2.5px solid var(--mid-green);
+      border-radius: 100px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    #slide-2 .btn-outline:active { background: rgba(9, 93, 81, 0.08); }
+
+
+    /* ══════════════════════════════════════════════════════════
+       SLIDE 3 — How Many Workers (Step 1 of 3)
+    ══════════════════════════════════════════════════════════ */
+    #slide-3 {
+      background: var(--white);
+      gap: 0;
+    }
+
+    #slide-3 .step-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--mid-green);
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      margin-bottom: 24px;
+    }
+
+    #slide-3 .heading {
+      font-family: 'Rethink Sans', sans-serif;
+      font-size: 116px;
+      font-weight: 600;
+      color: var(--black);
+      text-align: center;
+      line-height: 1.1;
+      margin-bottom: 64px;
+    }
+    #slide-3 .heading .accent { color: var(--mid-green); }
+
+    .worker-cards {
+      display: flex;
+      gap: 28px;
+    }
+
+    .worker-card {
+      width: 368px;
+      height: 188px;
+      background: var(--gray-green);
+      border: 1.5px solid rgba(9, 93, 81, 0.22);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      transition: border-color 0.15s, background 0.15s, transform 0.1s;
+    }
+    .worker-card:hover {
+      border-color: rgba(9, 93, 81, 0.5);
+    }
+    .worker-card:active,
+    .worker-card.selected {
+      transform: scale(0.98);
+      border-color: var(--mid-green);
+      border-width: 2.5px;
+      background: #dceae4;
+    }
+
+    .worker-card .card-number {
+      font-family: 'Rethink Sans', sans-serif;
+      font-size: 44px;
+      font-weight: 800;
+      color: var(--black);
+    }
+    .worker-card .card-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 18px;
+      font-weight: 400;
+      color: var(--black);
+    }
+
+
+    /* ══════════════════════════════════════════════════════════
+       SLIDE 4 — Congratulations (Yes branch)
+    ══════════════════════════════════════════════════════════ */
+    #slide-4 {
+      background: var(--gray-green);
+      gap: 0;
+    }
+
+    #slide-4 .emoji {
+      font-size: 96px;
+      line-height: 1;
+      margin-bottom: 16px;
+    }
+
+    #slide-4 .heading {
+      font-family: 'Rethink Sans', sans-serif;
+      font-size: 116px;
+      font-weight: 600;
+      color: var(--black);
+      text-align: center;
+      line-height: 1.1;
+    }
+
+    #slide-4 .sub {
+      font-family: 'Inter', sans-serif;
+      font-size: 28px;
+      font-weight: 400;
+      color: var(--black);
+      text-align: center;
+      margin-top: 16px;
+      opacity: 0.7;
+    }
+
+    #slide-4 .btn-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      margin-top: 64px;
+      align-items: center;
+    }
+
+    #slide-4 .btn-solid {
+      width: 520px;
+      padding: 30px 0;
+      background: var(--mid-green);
+      color: var(--white);
+      font-family: 'Inter', sans-serif;
+      font-size: 26px;
+      font-weight: 600;
+      border: none;
+      border-radius: 100px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      transition: opacity 0.15s;
+    }
+    #slide-4 .btn-solid:active { opacity: 0.82; }
+
+    #slide-4 .btn-outline {
+      width: 520px;
+      padding: 30px 0;
+      background: transparent;
+      color: var(--mid-green);
+      font-family: 'Inter', sans-serif;
+      font-size: 26px;
+      font-weight: 600;
+      border: 2.5px solid var(--mid-green);
+      border-radius: 100px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    #slide-4 .btn-outline:active { background: rgba(9, 93, 81, 0.08); }
+
+
+    /* ══════════════════════════════════════════════════════════
+       SLIDE 5 — Pain Points (Step 2 of 3)
+    ══════════════════════════════════════════════════════════ */
+    #slide-5 {
+      background: var(--white);
+      gap: 0;
+    }
+
+    #slide-5 .step-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--mid-green);
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      margin-bottom: 24px;
+    }
+
+    #slide-5 .heading {
+      font-family: 'Rethink Sans', sans-serif;
+      font-size: 116px;
+      font-weight: 600;
+      color: var(--black);
+      text-align: center;
+      line-height: 1.1;
+    }
+    #slide-5 .heading .accent { color: var(--mid-green); }
+
+    #slide-5 .sub {
+      font-family: 'Inter', sans-serif;
+      font-size: 22px;
+      font-weight: 400;
+      color: var(--black);
+      text-align: center;
+      margin-top: 20px;
+      opacity: 0.65;
+    }
+
+    .pain-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 340px);
+      gap: 24px;
+      margin-top: 48px;
+    }
+
+    .pain-card {
+      height: 128px;
+      background: var(--gray-green);
+      border: 1.5px solid rgba(9, 93, 81, 0.22);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', sans-serif;
+      font-size: 22px;
+      font-weight: 500;
+      color: var(--black);
+      text-align: center;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      transition: border-color 0.15s, background 0.15s, transform 0.1s;
+    }
+    .pain-card:hover {
+      border-color: rgba(9, 93, 81, 0.5);
+    }
+    .pain-card.selected {
+      border-color: var(--mid-green);
+      border-width: 2.5px;
+      background: #dceae4;
+    }
+
+    #slide-5 .btn-next {
+      margin-top: 48px;
+      padding: 24px 72px;
+      background: var(--electric-green);
+      color: var(--mid-green);
+      font-family: 'Inter', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      border: none;
+      border-radius: 100px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      transition: opacity 0.15s;
+    }
+    #slide-5 .btn-next:active { opacity: 0.85; }
+
+
+    /* ══════════════════════════════════════════════════════════
+       SLIDE 6 — Calculator Sliders (Step 3 of 3)
+    ══════════════════════════════════════════════════════════ */
+    #slide-6 {
+      background: var(--white);
+      gap: 0;
+    }
+
+    #slide-6 .step-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--mid-green);
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      margin-bottom: 24px;
+    }
+
+    #slide-6 .heading {
+      font-family: 'Rethink Sans', sans-serif;
+      font-size: 86px;
+      font-weight: 600;
+      color: var(--black);
+      text-align: center;
+      line-height: 1.1;
+    }
+    #slide-6 .heading .accent { color: var(--mid-green); }
+
+    #slide-6 .sub {
+      font-family: 'Inter', sans-serif;
+      font-size: 22px;
+      font-weight: 400;
+      color: var(--black);
+      text-align: center;
+      margin-top: 16px;
+      opacity: 0.65;
+    }
+
+    .sliders-wrap {
+      width: 1160px;
+      margin-top: 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 36px;
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+    }
+
+    .slider-left {
+      flex: 1;
+    }
+
+    .slider-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--black);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 16px;
+    }
+
+    .slider-label .num {
+      font-weight: 700;
+    }
+
+    /* Custom range input styling */
+    .slider-track {
+      position: relative;
+      width: 100%;
+      height: 56px;
+      display: flex;
+      align-items: center;
+    }
+
+    .slider-track input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 12px;
+      border-radius: 6px;
+      background: #e0e0e0;
+      outline: none;
+      cursor: pointer;
+      touch-action: none;
+    }
+
+    /* Track fill — uses a gradient trick */
+    .slider-track input[type="range"]::-webkit-slider-runnable-track {
+      height: 12px;
+      border-radius: 6px;
+      background: linear-gradient(
+        to right,
+        var(--electric-green) 0%,
+        var(--electric-green) var(--fill, 50%),
+        #e0e0e0 var(--fill, 50%),
+        #e0e0e0 100%
+      );
+    }
+
+    .slider-track input[type="range"]::-moz-range-track {
+      height: 12px;
+      border-radius: 6px;
+      background: #e0e0e0;
+    }
+
+    .slider-track input[type="range"]::-moz-range-progress {
+      height: 12px;
+      border-radius: 6px 0 0 6px;
+      background: var(--electric-green);
+    }
+
+    /* Thumb */
+    .slider-track input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--white);
+      border: 3px solid #ccc;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      cursor: pointer;
+      margin-top: -12px;
+    }
+
+    .slider-track input[type="range"]::-moz-range-thumb {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--white);
+      border: 3px solid #ccc;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      cursor: pointer;
+    }
+
+    .slider-range-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 6px;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 400;
+      color: rgba(0,0,0,0.5);
+    }
+
+    .slider-value {
+      min-width: 200px;
+      text-align: right;
+      font-family: 'Rethink Sans', sans-serif;
+      font-size: 52px;
+      font-weight: 800;
+      color: var(--black);
+      line-height: 1;
+      padding-top: 20px;
+    }
+
+    #slide-6 .btn-next {
+      margin-top: 48px;
+      padding: 24px 72px;
+      background: var(--electric-green);
+      color: var(--mid-green);
+      font-family: 'Inter', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      border: none;
+      border-radius: 100px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      transition: opacity 0.15s;
+    }
+    #slide-6 .btn-next:active { opacity: 0.85; }
+
+
+    /* ══════════════════════════════════════════════════════════
+       SLIDE 7 — Results
+    ══════════════════════════════════════════════════════════ */
+    #slide-7 {
+      background: var(--white);
+      gap: 0;
+    }
+
+    #slide-7 .results-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--mid-green);
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      margin-bottom: 40px;
+    }
+
+    .results-card {
+      width: 880px;
+      background: var(--gray-green);
+      border: 1.5px solid rgba(9, 93, 81, 0.22);
+      border-radius: 24px;
+      padding: 64px 80px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .results-card .card-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--mid-green);
+      text-transform: uppercase;
+      letter-spacing: 2.5px;
+      margin-bottom: 16px;
+    }
+
+    .results-card .big-number {
+      font-family: 'Rethink Sans', sans-serif;
+      font-size: 148px;
+      font-weight: 800;
+      color: var(--black);
+      line-height: 1;
+      margin-bottom: 24px;
+    }
+
+    .results-card .result-copy {
+      font-family: 'Inter', sans-serif;
+      font-size: 24px;
+      font-weight: 400;
+      color: var(--black);
+      line-height: 1.6;
+      opacity: 0.72;
+      max-width: 640px;
+    }
+
+    #slide-7 .btn-cta {
+      margin-top: 56px;
+      padding: 28px 72px;
+      background: var(--electric-green);
+      color: var(--mid-green);
+      font-family: 'Inter', sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      border: none;
+      border-radius: 100px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      transition: opacity 0.15s;
+    }
+    #slide-7 .btn-cta:active { opacity: 0.85; }
+
+
+    /* ══════════════════════════════════════════════════════════
+       SLIDE 8 — What if you got paid
+    ══════════════════════════════════════════════════════════ */
+    #slide-8 {
+      background: var(--white);
+      gap: 0;
+    }
+
+    .statement-card {
+      width: 1060px;
+      background: var(--gray-green);
+      border: 1.5px solid rgba(9, 93, 81, 0.22);
+      border-radius: 24px;
+      padding: 96px 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .statement-card .heading {
+      font-family: 'Rethink Sans', sans-serif;
+      font-size: 86px;
+      font-weight: 600;
+      color: var(--black);
+      line-height: 1.15;
+    }
+    .statement-card .heading .accent { color: var(--mid-green); }
+
+    #slide-8 .btn-cta {
+      margin-top: 56px;
+      padding: 28px 72px;
+      background: var(--electric-green);
+      color: var(--mid-green);
+      font-family: 'Inter', sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      border: none;
+      border-radius: 100px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      transition: opacity 0.15s;
+    }
+    #slide-8 .btn-cta:active { opacity: 0.85; }
+
+
+    /* ══════════════════════════════════════════════════════════
+       SLIDE 9 — Hi, I'm Rostyr
+    ══════════════════════════════════════════════════════════ */
+    #slide-9 {
+      background: var(--white);
+      gap: 0;
+    }
+
+    #slide-9 .heading {
+      font-family: 'Rethink Sans', sans-serif;
+      font-size: 116px;
+      font-weight: 600;
+      color: var(--black);
+      text-align: center;
+      line-height: 1.1;
+    }
+    #slide-9 .heading .accent { color: var(--mid-green); }
+
+    #slide-9 .sub {
+      font-family: 'Inter', sans-serif;
+      font-size: 40px;
+      font-weight: 400;
+      color: var(--black);
+      text-align: center;
+      line-height: 1.6;
+      margin-top: 28px;
+      opacity: 0.65;
+    }
+
+    #slide-9 .btn-cta {
+      margin-top: 56px;
+      padding: 28px 72px;
+      background: var(--electric-green);
+      color: var(--mid-green);
+      font-family: 'Inter', sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      border: none;
+      border-radius: 100px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      transition: opacity 0.15s;
+    }
+    #slide-9 .btn-cta:active { opacity: 0.85; }
+
+
+    /* ══════════════════════════════════════════════════════════
+       SLIDE 10 — I close your payroll cash gap
+    ══════════════════════════════════════════════════════════ */
+    #slide-10 {
+      background: var(--white);
+      gap: 0;
+    }
+
+    #slide-10 .heading {
+      font-family: 'Rethink Sans', sans-serif;
+      font-size: 116px;
+      font-weight: 600;
+      color: var(--black);
+      text-align: center;
+      line-height: 1.1;
+    }
+    #slide-10 .heading .accent { color: var(--mid-green); }
+
+    #slide-10 .sub {
+      font-family: 'Inter', sans-serif;
+      font-size: 24px;
+      font-weight: 400;
+      color: var(--black);
+      text-align: center;
+      margin-top: 24px;
+      opacity: 0.65;
+    }
+
+    .help-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 24px;
+      margin-top: 40px;
+      width: 1068px;
+    }
+
+    .help-card {
+      width: 340px;
+      height: 128px;
+      padding: 0 24px;
+      box-sizing: border-box;
+      background: var(--gray-green);
+      border: 1.5px solid rgba(9, 93, 81, 0.22);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', sans-serif;
+      font-size: 22px;
+      font-weight: 500;
+      color: var(--black);
+      text-align: center;
+      opacity: 0;
+      transform: translateY(24px) scale(0.95);
+      transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .help-card.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    #slide-10 .btn-cta {
+      margin-top: 48px;
+      padding: 28px 72px;
+      background: var(--electric-green);
+      color: var(--mid-green);
+      font-family: 'Inter', sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      border: none;
+      border-radius: 100px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+      opacity: 0;
+      transform: translateY(16px);
+      pointer-events: none;
+    }
+    #slide-10 .btn-cta.visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+    #slide-10 .btn-cta:active { opacity: 0.85; }
+
+
+    /* ══════════════════════════════════════════════════════════
+       SLIDE 11 — Want to see how?
+    ══════════════════════════════════════════════════════════ */
+    #slide-11 {
+      background: var(--white);
+      gap: 0;
+    }
+
+    #slide-11 .heading {
+      font-family: 'Rethink Sans', sans-serif;
+      font-size: 116px;
+      font-weight: 600;
+      color: var(--black);
+      text-align: center;
+      line-height: 1.1;
+    }
+
+    .choice-row {
+      display: flex;
+      gap: 28px;
+      margin-top: 64px;
+    }
+
+    .choice-card {
+      width: 420px;
+      height: 188px;
+      border-radius: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      transition: transform 0.1s, opacity 0.15s;
+    }
+    .choice-card:active { transform: scale(0.97); opacity: 0.88; }
+
+    .choice-card .card-title {
+      font-family: 'Inter', sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--black);
+    }
+    .choice-card .card-sub {
+      font-family: 'Inter', sans-serif;
+      font-size: 20px;
+      font-weight: 400;
+      color: var(--black);
+      opacity: 0.65;
+    }
+
+    .choice-card.green {
+      background: var(--electric-green);
+    }
+    .choice-card.green .card-title { color: var(--mid-green); }
+    .choice-card.green .card-sub { color: var(--mid-green); opacity: 0.7; }
+
+    .choice-card.outline {
+      background: var(--gray-green);
+      border: 1.5px solid rgba(9, 93, 81, 0.22);
+    }
+
+    /* ── Slide 12 — Book a Raincheck ── */
+    #slide-12 {
+      background: var(--white);
+      gap: 0;
+    }
+
+    #slide-12 .heading {
+      font-family: 'Rethink Sans', sans-serif;
+      font-size: 116px;
+      font-weight: 600;
+      color: var(--black);
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .sub-12 {
+      font-family: 'Inter', sans-serif;
+      font-size: 28px;
+      font-weight: 400;
+      color: rgba(0, 0, 0, 0.55);
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .calendly-placeholder {
+      width: 900px;
+      height: 520px;
+      border-radius: 20px;
+      border: 2px dashed rgba(9, 93, 81, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--gray-green);
+    }
+
+    /* ── Slide 13 — Can't wait to meet you ── */
+    #slide-13 {
+      background: var(--gray-green);
+      gap: 0;
+    }
+
+    .wave-emoji {
+      font-size: 120px;
+      line-height: 1;
+      margin-bottom: 24px;
+    }
+
+    #slide-13 .heading {
+      font-family: 'Rethink Sans', sans-serif;
+      font-size: 116px;
+      font-weight: 600;
+      color: var(--black);
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .sub-13 {
+      font-family: 'Inter', sans-serif;
+      font-size: 28px;
+      font-weight: 400;
+      color: rgba(0, 0, 0, 0.5);
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .btn-start-over {
+      padding: 28px 120px;
+      border-radius: 999px;
+      border: 1.5px solid rgba(9, 93, 81, 0.3);
+      background: transparent;
+      font-family: 'Inter', sans-serif;
+      font-size: 28px;
+      font-weight: 600;
+      color: var(--mid-green);
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .btn-start-over:hover {
+      background: rgba(9, 93, 81, 0.06);
+      border-color: rgba(9, 93, 81, 0.5);
+    }
+
+  </style>
+</head>
+<body>
+  <div id="app" class="no-transition">
+
+    <!-- ════════════════════════════════════════
+         SLIDE 1 — Title / Splash
+    ════════════════════════════════════════ -->
+    <div class="slide active" id="slide-1">
+      <img class="logo" src="logo.png" alt="Rostyr Logo">
+      <div class="headline">
+        <span class="line1">OPERATION</span>
+        <span class="line2">PAYROLL</span>
+      </div>
+      <p class="subtitle">The clock is ticking. Will your cash flow keep up?</p>
+      <button class="btn-play" onclick="navigate('slide-2')">Play Now</button>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         SLIDE 2 — Cash Gap Question
+    ════════════════════════════════════════ -->
+    <div class="slide" id="slide-2">
+      <img class="logo" src="logo.png" alt="Rostyr Logo">
+      <h1 class="heading">
+        Can your payroll<br>
+        survive a <span class="accent">cash gap?</span>
+      </h1>
+      <div class="btn-row">
+        <button class="btn-solid"   onclick="handleCashGap('yes')">Yes</button>
+        <button class="btn-outline" onclick="handleCashGap('find-out')">Let's find out</button>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         SLIDE 4 — Congratulations (Yes branch)
+    ════════════════════════════════════════ -->
+    <div class="slide" id="slide-4">
+      <img class="logo" src="logo.png" alt="Rostyr Logo">
+      <div class="emoji">🎉</div>
+      <h1 class="heading">Congratulations</h1>
+      <p class="sub">Keep doing what you're doing.</p>
+      <div class="btn-stack">
+        <button class="btn-solid" onclick="navigate('slide-3')">What if things change?</button>
+        <button class="btn-outline" onclick="startOver()">Start Over</button>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         SLIDE 3 — How Many Workers (Step 1 of 3)
+    ════════════════════════════════════════ -->
+    <div class="slide" id="slide-3">
+      <button class="back-btn" onclick="goBack()">
+        <i class="ph ph-arrow-left"></i> Back
+      </button>
+      <img class="logo" src="logo.png" alt="Rostyr Logo">
+
+      <p class="step-label">Step 1 of 3</p>
+      <h1 class="heading">
+        How many workers<br>
+        are you <span class="accent">placing?</span>
+      </h1>
+      <div class="worker-cards">
+        <div class="worker-card" onclick="selectWorkers('10-100', this)">
+          <span class="card-number">10 - 100</span>
+          <span class="card-label">workers placed per week</span>
+        </div>
+        <div class="worker-card" onclick="selectWorkers('100-500', this)">
+          <span class="card-number">100 - 500</span>
+          <span class="card-label">workers placed per week</span>
+        </div>
+        <div class="worker-card" onclick="selectWorkers('500-2000+', this)">
+          <span class="card-number">500 - 2,000+</span>
+          <span class="card-label">workers placed per week</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         SLIDE 5 — Pain Points (Step 2 of 3)
+    ════════════════════════════════════════ -->
+    <div class="slide" id="slide-5">
+      <button class="back-btn" onclick="goBack()">
+        <i class="ph ph-arrow-left"></i> Back
+      </button>
+      <img class="logo" src="logo.png" alt="Rostyr Logo">
+
+      <p class="step-label">Step 2 of 3</p>
+      <h1 class="heading">
+        What keeps you <span class="accent">up at night?</span>
+      </h1>
+      <p class="sub">Beyond payroll, what other challenges are you facing? Select all that apply and click Next.</p>
+      <div class="pain-grid">
+        <div class="pain-card" onclick="togglePain('Labor Laws', this)">Labor Laws</div>
+        <div class="pain-card" onclick="togglePain('Increasing Workloads', this)">Increasing Workloads</div>
+        <div class="pain-card" onclick="togglePain('Lack of Knowledge', this)">Lack of Knowledge</div>
+        <div class="pain-card" onclick="togglePain('Stress & Burnout', this)">Stress &amp; Burnout</div>
+        <div class="pain-card" onclick="togglePain('Manual Reporting', this)">Manual Reporting</div>
+        <div class="pain-card" onclick="togglePain('Workers Comp', this)">Workers' Comp</div>
+      </div>
+      <button class="btn-next" onclick="submitPainPoints()">Next &rarr;</button>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         SLIDE 6 — Calculator Sliders (Step 3 of 3)
+    ════════════════════════════════════════ -->
+    <div class="slide" id="slide-6">
+      <button class="back-btn" onclick="goBack()">
+        <i class="ph ph-arrow-left"></i> Back
+      </button>
+      <img class="logo" src="logo.png" alt="Rostyr Logo">
+
+      <p class="step-label">Step 3 of 3</p>
+      <h1 class="heading">
+        Adjust the <span class="accent">inputs</span> to match your firm
+      </h1>
+      <p class="sub">Once complete, click Next.</p>
+
+      <div class="sliders-wrap">
+        <!-- Slider 1: Weekly Payroll -->
+        <div class="slider-row">
+          <div class="slider-left">
+            <div class="slider-label"><span class="num">1.</span> WEEKLY PAYROLL</div>
+            <div class="slider-track">
+              <input type="range" id="slider-payroll" min="15000" max="3000000" step="5000" value="500000"
+                     oninput="updateSlider(this, 'payroll')">
+            </div>
+            <div class="slider-range-labels">
+              <span>$15K</span>
+              <span>$3M+</span>
+            </div>
+          </div>
+          <div class="slider-value" id="val-payroll">$500K</div>
+        </div>
+
+        <!-- Slider 2: DSO -->
+        <div class="slider-row">
+          <div class="slider-left">
+            <div class="slider-label"><span class="num">2.</span> DAYS SALES OUTSTANDING (DSO)</div>
+            <div class="slider-track">
+              <input type="range" id="slider-dso" min="14" max="75" step="1" value="45"
+                     oninput="updateSlider(this, 'dso')">
+            </div>
+            <div class="slider-range-labels">
+              <span>14 DAYS</span>
+              <span>75 Days</span>
+            </div>
+          </div>
+          <div class="slider-value" id="val-dso">45 Days</div>
+        </div>
+
+        <!-- Slider 3: Gross Margin -->
+        <div class="slider-row">
+          <div class="slider-left">
+            <div class="slider-label"><span class="num">3.</span> GROSS MARGIN</div>
+            <div class="slider-track">
+              <input type="range" id="slider-margin" min="10" max="35" step="1" value="25"
+                     oninput="updateSlider(this, 'margin')">
+            </div>
+            <div class="slider-range-labels">
+              <span>10%</span>
+              <span>35%</span>
+            </div>
+          </div>
+          <div class="slider-value" id="val-margin">25%</div>
+        </div>
+      </div>
+
+      <button class="btn-next" onclick="submitSliders()">Next &rarr;</button>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         SLIDE 7 — Results
+    ════════════════════════════════════════ -->
+    <div class="slide" id="slide-7">
+      <button class="back-btn" onclick="goBack()">
+        <i class="ph ph-arrow-left"></i> Back
+      </button>
+      <img class="logo" src="logo.png" alt="Rostyr Logo">
+
+      <p class="results-label">Your Results</p>
+      <div class="results-card">
+        <p class="card-label">Estimated Working Capital Needed</p>
+        <div class="big-number" id="result-number">$0</div>
+        <p class="result-copy" id="result-copy"></p>
+      </div>
+      <button class="btn-cta" onclick="submitResults()">What can I do about this?</button>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         SLIDE 8 — What if you got paid
+    ════════════════════════════════════════ -->
+    <div class="slide" id="slide-8">
+      <button class="back-btn" onclick="goBack()">
+        <i class="ph ph-arrow-left"></i> Back
+      </button>
+      <img class="logo" src="logo.png" alt="Rostyr Logo">
+
+      <div class="statement-card">
+        <h1 class="heading">
+          What if you got paid<br>
+          as soon as <span class="accent">time cards<br>
+          were approved?</span>
+        </h1>
+      </div>
+      <button class="btn-cta" onclick="submitStatement()">Tell me more</button>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         SLIDE 9 — Hi, I'm Rostyr
+    ════════════════════════════════════════ -->
+    <div class="slide" id="slide-9">
+      <button class="back-btn" onclick="goBack()">
+        <i class="ph ph-arrow-left"></i> Back
+      </button>
+      <img class="logo" src="logo.png" alt="Rostyr Logo">
+
+      <h1 class="heading">
+        Hi, I'm <span class="accent">Rostyr</span>
+      </h1>
+      <p class="sub">I make your life easier<br>while you grow your staffing agency.</p>
+      <button class="btn-cta" onclick="submitRostyrIntro()">How?</button>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         SLIDE 10 — I close your payroll cash gap
+    ════════════════════════════════════════ -->
+    <div class="slide" id="slide-10">
+      <img class="logo" src="logo.png" alt="Rostyr Logo">
+
+      <h1 class="heading">
+        I close your <span class="accent">payroll cash gap</span>
+      </h1>
+      <p class="sub">I also help with:</p>
+      <div class="help-grid" id="help-grid"></div>
+      <button class="btn-cta help-cta" id="help-cta" onclick="submitHelpSlide()">See how</button>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         SLIDE 11 — Want to see how?
+    ════════════════════════════════════════ -->
+    <div class="slide" id="slide-11">
+      <button class="back-btn" onclick="goBack()">
+        <i class="ph ph-arrow-left"></i> Back
+      </button>
+      <img class="logo" src="logo.png" alt="Rostyr Logo">
+
+      <h1 class="heading">Want to see how?</h1>
+      <div class="choice-row">
+        <div class="choice-card green" onclick="handleChoice('demo')">
+          <span class="card-title">Show me a demo</span>
+          <span class="card-sub">Right here, right now</span>
+        </div>
+        <div class="choice-card outline" onclick="handleChoice('raincheck')">
+          <span class="card-title">Book a raincheck</span>
+          <span class="card-sub">Learn more later</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Slide 12 — Book a Raincheck (Calendly) ── -->
+    <div class="slide" id="slide-12">
+      <button class="back-btn" onclick="goBack()">
+        <i class="ph ph-arrow-left"></i> Back
+      </button>
+      <img class="logo" src="logo.png" alt="Rostyr Logo">
+
+      <h1 class="heading">Book a <span class="accent">raincheck</span></h1>
+      <p class="sub-12">Pick a time that works for you.</p>
+
+      <div class="calendly-placeholder">
+        <!-- Calendly embed will go here -->
+      </div>
+    </div>
+
+    <!-- ── Slide 13 — Can't wait to meet you ── -->
+    <div class="slide" id="slide-13">
+      <img class="logo" src="logo.png" alt="Rostyr Logo">
+
+      <div class="wave-emoji">👋</div>
+      <h1 class="heading">Can't wait to meet you</h1>
+      <p class="sub-13">Someone will be right with you.</p>
+
+      <button class="btn-start-over" onclick="startOver()">Start Over</button>
+    </div>
+
+  </div><!-- #app -->
+
+  <script>
+    // ─────────────────────────────────────────────
+    // STATE — single source of truth for the deck
+    // ─────────────────────────────────────────────
+    const state = {
+      currentSlide: 'slide-1',
+      history: [],
+      data: {
+        survivedCashGap: null,  // 'yes' | 'find-out'
+        workersPlaced:   null,  // '10-100' | '100-500' | '500-2000+'
+        painPoints:      [],    // multi-select array
+        weeklyPayroll:   500000,
+        dso:             45,
+        grossMargin:     25,
+      }
+    };
+
+    // ─────────────────────────────────────────────
+    // NAVIGATION  (animated horizontal slide)
+    // ─────────────────────────────────────────────
+    let isAnimating = false;
+    const ANIM_MS = 650; // matches CSS transition duration
+
+    function navigate(slideId, data = {}) {
+      if (isAnimating) return;
+      const target = document.getElementById(slideId);
+      if (!target) return;
+
+      isAnimating = true;
+      state.history.push(state.currentSlide);
+      Object.assign(state.data, data);
+
+      // Old slide exits left
+      const prev = document.getElementById(state.currentSlide);
+      prev?.classList.remove('active');
+      prev?.classList.add('exited');
+
+      // New slide enters from right
+      state.currentSlide = slideId;
+      target.classList.add('active');
+
+      setTimeout(() => { isAnimating = false; }, ANIM_MS);
+    }
+
+    function goBack() {
+      if (isAnimating || state.history.length === 0) return;
+      isAnimating = true;
+
+      // Current slide exits right (back to default translateX(100%))
+      const leaving = document.getElementById(state.currentSlide);
+      leaving?.classList.remove('active');
+
+      // Previous slide enters from left
+      const targetId = state.history.pop();
+      const entering = document.getElementById(targetId);
+      entering?.classList.remove('exited');
+      entering?.classList.add('active');
+
+      state.currentSlide = targetId;
+      setTimeout(() => { isAnimating = false; }, ANIM_MS);
+    }
+
+    // ─────────────────────────────────────────────
+    // ARROW KEY NAVIGATION
+    // ─────────────────────────────────────────────
+    const slideOrder = ['slide-1', 'slide-2', 'slide-4', 'slide-3', 'slide-5', 'slide-6', 'slide-7', 'slide-8', 'slide-9', 'slide-10', 'slide-11', 'slide-12', 'slide-13'];
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') {
+        const idx = slideOrder.indexOf(state.currentSlide);
+        if (idx < slideOrder.length - 1) navigate(slideOrder[idx + 1]);
+      }
+      if (e.key === 'ArrowLeft') {
+        goBack();
+      }
+    });
+
+    // ─────────────────────────────────────────────
+    // SLIDE LOGIC
+    // ─────────────────────────────────────────────
+
+    // Slide 2 — cash gap answer
+    function handleCashGap(answer) {
+      state.data.survivedCashGap = answer;
+      if (answer === 'yes') {
+        navigate('slide-4'); // Congratulations branch
+      } else {
+        navigate('slide-3'); // Skip to worker selection
+      }
+    }
+
+    // Slide 4 — Start Over (reset everything)
+    function startOver() {
+      // Clear all exited classes
+      document.querySelectorAll('.slide').forEach(s => {
+        s.classList.remove('active', 'exited');
+      });
+      // Reset state
+      state.currentSlide = 'slide-1';
+      state.history = [];
+      state.data = {
+        survivedCashGap: null,
+        workersPlaced: null,
+        painPoints: [],
+        weeklyPayroll: 500000,
+        dso: 45,
+        grossMargin: 25,
+      };
+      // Clear any selected cards
+      document.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+      // Reset sliders to defaults
+      resetSliders();
+      // Activate slide 1
+      document.getElementById('slide-1').classList.add('active');
+    }
+
+    // Slide 3 — worker range selection
+    function selectWorkers(range, el) {
+      state.data.workersPlaced = range;
+      document.querySelectorAll('.worker-card').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+      setTimeout(() => navigate('slide-5'), 300);
+    }
+
+    // Slide 5 — pain point multi-select
+    function togglePain(value, el) {
+      const idx = state.data.painPoints.indexOf(value);
+      if (idx === -1) {
+        state.data.painPoints.push(value);
+        el.classList.add('selected');
+      } else {
+        state.data.painPoints.splice(idx, 1);
+        el.classList.remove('selected');
+      }
+    }
+
+    function submitPainPoints() {
+      navigate('slide-6');
+    }
+
+    // Slide 6 — slider updates
+    function updateSlider(input, type) {
+      const val = Number(input.value);
+      const min = Number(input.min);
+      const max = Number(input.max);
+      const pct = ((val - min) / (max - min)) * 100;
+      input.style.setProperty('--fill', pct + '%');
+
+      if (type === 'payroll') {
+        state.data.weeklyPayroll = val;
+        document.getElementById('val-payroll').textContent = formatPayroll(val);
+      } else if (type === 'dso') {
+        state.data.dso = val;
+        document.getElementById('val-dso').textContent = val + ' Days';
+      } else if (type === 'margin') {
+        state.data.grossMargin = val;
+        document.getElementById('val-margin').textContent = val + '%';
+      }
+    }
+
+    function formatPayroll(val) {
+      if (val >= 1000000) {
+        const m = val / 1000000;
+        return '$' + (m % 1 === 0 ? m.toFixed(0) : m.toFixed(1)) + 'M';
+      }
+      return '$' + Math.round(val / 1000) + 'K';
+    }
+
+    function submitSliders() {
+      computeResults();
+      navigate('slide-7');
+    }
+
+    // Slide 7 — compute and display results
+    function computeResults() {
+      const wp  = state.data.weeklyPayroll;
+      const dso = state.data.dso;
+      const result = wp * (dso / 7);
+
+      // Format the big number
+      document.getElementById('result-number').textContent = formatBigNumber(result);
+
+      // Pick the right copy based on range
+      const inK = result / 1000;
+      let copy = '';
+      if (inK < 50) {
+        copy = 'This is common for staffing firms your size. Even a small contractor base can require tens of thousands in working capital.';
+      } else if (inK < 150) {
+        copy = 'This is common for growing staffing firms. As placements increase, the gap between payroll and client payments grows quickly.';
+      } else if (inK < 500) {
+        copy = 'This is where many staffing firms hit their first cash flow wall. Floating payroll at this level can put serious pressure on working capital.';
+      } else {
+        copy = 'Payroll at this scale requires significant working capital. Many large staffing firms rely on structured funding to support it.';
+      }
+      document.getElementById('result-copy').textContent = copy;
+    }
+
+    function formatBigNumber(val) {
+      if (val >= 1000000) {
+        const m = val / 1000000;
+        if (m >= 10) return '$' + Math.round(m) + 'M';
+        return '$' + (m % 1 === 0 ? m.toFixed(0) : m.toFixed(1)) + 'M';
+      }
+      if (val >= 1000) {
+        const k = val / 1000;
+        return '$' + (k % 1 === 0 ? k.toFixed(0) : k.toFixed(0)) + 'K';
+      }
+      return '$' + Math.round(val);
+    }
+
+    function submitResults() {
+      navigate('slide-8');
+    }
+
+    function submitStatement() {
+      navigate('slide-9');
+    }
+
+    function submitRostyrIntro() {
+      populateHelpGrid();
+      navigate('slide-10');
+    }
+
+    // Slide 10 — dynamically populate pain point cards
+    function populateHelpGrid() {
+      const grid = document.getElementById('help-grid');
+      const cta = document.getElementById('help-cta');
+      grid.innerHTML = '';
+      cta.classList.remove('visible');
+      const points = state.data.painPoints;
+      points.forEach((point, i) => {
+        const card = document.createElement('div');
+        card.className = 'help-card';
+        card.textContent = point;
+        grid.appendChild(card);
+        // Staggered animation
+        setTimeout(() => {
+          card.classList.add('visible');
+        }, 400 + i * 150);
+      });
+      // Show button after all cards have animated in
+      const btnDelay = 400 + points.length * 150 + 200;
+      setTimeout(() => {
+        cta.classList.add('visible');
+      }, btnDelay);
+    }
+
+    function submitHelpSlide() {
+      navigate('slide-11');
+    }
+
+    function handleChoice(choice) {
+      state.data.demoChoice = choice;
+      if (choice === 'demo') {
+        navigate('slide-13');
+      } else {
+        navigate('slide-12');
+      }
+    }
+
+    function resetSliders() {
+      const payroll = document.getElementById('slider-payroll');
+      const dso = document.getElementById('slider-dso');
+      const margin = document.getElementById('slider-margin');
+      if (payroll) { payroll.value = 500000; updateSlider(payroll, 'payroll'); }
+      if (dso)     { dso.value = 45;        updateSlider(dso, 'dso'); }
+      if (margin)  { margin.value = 25;     updateSlider(margin, 'margin'); }
+    }
+
+    // Init slider fills on load
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.slider-track input[type="range"]').forEach(input => {
+        const min = Number(input.min);
+        const max = Number(input.max);
+        const val = Number(input.value);
+        const pct = ((val - min) / (max - min)) * 100;
+        input.style.setProperty('--fill', pct + '%');
+      });
+    });
+
+    // ─────────────────────────────────────────────
+    // SCALE — keep 1920×1080 canvas centered in any
+    //         viewport while maintaining aspect ratio
+    // ─────────────────────────────────────────────
+    function scaleApp() {
+      const app     = document.getElementById('app');
+      const scale   = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      const scaledW = 1920 * scale;
+      const scaledH = 1080 * scale;
+      app.style.left      = ((window.innerWidth  - scaledW) / 2) + 'px';
+      app.style.top       = ((window.innerHeight - scaledH) / 2) + 'px';
+      app.style.transform = `scale(${scale})`;
+    }
+
+    window.addEventListener('resize', scaleApp);
+    scaleApp();
+
+    // Enable transitions after initial paint
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.getElementById('app').classList.remove('no-transition');
+      });
+    });
+  </script>
+</body>
+</html>

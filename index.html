@@ -1128,7 +1128,7 @@
       <h1 class="heading">Congratulations</h1>
       <p class="sub">Keep doing what you're doing.</p>
       <div class="btn-stack">
-        <button class="btn-solid" onclick="navigate('slide-3')">What if things change?</button>
+        <button class="btn-solid" onclick="navigate('slide-2')">What if things change?</button>
         <button class="btn-outline" onclick="startOver()">Start Over</button>
       </div>
     </div>
@@ -1412,6 +1412,7 @@
 
       // New slide enters from right
       state.currentSlide = slideId;
+      target.classList.remove('exited');
       target.classList.add('active');
 
       setTimeout(() => { isAnimating = false; }, ANIM_MS);

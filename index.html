@@ -13,6 +13,11 @@
   <!-- Phosphor Icons -->
   <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
 
+  <!-- SavvyCal -->
+  <script>window.SavvyCal=window.SavvyCal||function(){(SavvyCal.q=SavvyCal.q||[]).push(arguments)};</script>
+  <script async src="https://embed.savvycal.com/v1/embed.js"></script>
+  <script>SavvyCal('init')</script>
+
   <style>
     *, *::before, *::after {
       box-sizing: border-box;
@@ -1020,15 +1025,17 @@
       margin-bottom: 40px;
     }
 
-    .calendly-placeholder {
+    .savvycal-wrap {
       width: 900px;
-      height: 520px;
+      height: 560px;
       border-radius: 20px;
-      border: 2px dashed rgba(9, 93, 81, 0.25);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--gray-green);
+      overflow: hidden;
+      margin-top: 10px;
+    }
+    .savvycal-wrap iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
     }
 
     /* ── Slide 13 — Can't wait to meet you ── */
@@ -1348,8 +1355,8 @@
       <h1 class="heading">Book a <span class="accent">raincheck</span></h1>
       <p class="sub-12">Pick a time that works for you.</p>
 
-      <div class="calendly-placeholder">
-        <!-- Calendly embed will go here -->
+      <div class="savvycal-wrap">
+        <iframe src="https://savvycal.com/lcarnahan/larry" title="Schedule a time"></iframe>
       </div>
     </div>
 
